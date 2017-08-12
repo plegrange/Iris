@@ -1,8 +1,5 @@
 import javax.print.DocFlavor;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 
 public class Cell {
     private String cellID;
@@ -11,12 +8,14 @@ public class Cell {
             READY = "READY",
             WAITING = "WAITING",
             STARVING = "STARVING,",
-            BLOCKED = "BLOCKED";
+            BLOCKED = "BLOCKED",
+            FAILED = "FAILED";
     private final String TAKE = "TAKE",
             WORK = "WORK",
             GIVE = "GIVE",
             WAIT = "WAIT",
-            PEEK = "PEEK";
+            PEEK = "PEEK",
+            REPAIR = "REPAIR";
     private String status;
     private List<Queue<Unit>> inBuffers;
     private int inBufferCapacity;
@@ -24,6 +23,10 @@ public class Cell {
     private List<Cell> previousCells;
     private Unit workingUnit;
     private int cycleTime;
+    private int unitsConsumed, unitsProduced;
+    private int failures = 0;
+    // private int totalRepairTime;
+    private int totalTimePassed;
 
     public Cell(String cellID, int numberOfInBuffers,
                 int inBufferCapacity,
@@ -32,15 +35,52 @@ public class Cell {
         createInBuffers(numberOfInBuffers);
         this.inBufferCapacity = inBufferCapacity;
         this.cycleTime = cycleTime;
+        totalTimePassed = 0;
     }
 
-    public double getBufferLevel(){
+    private int totalDownTime = 0;
+
+    public void repair() {
+        totalDownTime++;
+        if (totalTimePassed - timeStepOfFailure >= totalDownTime / failures)
+            status = WORKING;
+        else status = FAILED;
+    }
+
+    int timeStepOfFailure;
+
+    private void fail() {
+        status = FAILED;
+        timeStepOfFailure = totalTimePassed;
+    }
+
+    public void incrementTime() {
+        totalTimePassed++;
+    }
+
+    public double getConsumptionRate() {
+        return (unitsConsumed * 1.0) / (totalTimePassed * 1.0);
+    }
+
+    public double getProductionRate() {
+        return (unitsProduced * 1.0) / (totalTimePassed * 1.0);
+    }
+
+    public double getFailureRate() {
+        return (failures * 1.0) / (totalTimePassed * 1.0);
+    }
+
+    public double getMeanRepairTime() {
+        return (totalDownTime * 1.0) / (failures * 1.0);
+    }
+
+    public double getBufferLevel() {
         int minBufferLevel = 99999;
-        for(Queue<Unit> buffer : inBuffers){
-            if(buffer.size()<minBufferLevel)
+        for (Queue<Unit> buffer : inBuffers) {
+            if (buffer.size() < minBufferLevel)
                 minBufferLevel = buffer.size();
         }
-        return (minBufferLevel*1.0)/(inBufferCapacity*1.0);
+        return (minBufferLevel * 1.0) / (inBufferCapacity * 1.0);
     }
 
     public void receiveInstruction(String instruction) {
@@ -95,16 +135,20 @@ public class Cell {
     }
 
     private int timeRemainingOnUnit = -1;
+    private double failureProbability = 0.05;
 
     //return true if work is complete
-    private boolean workOnUnit() {
+    private void workOnUnit() {
         if (timeRemainingOnUnit == 0) {
             status = DONE;
-            return true;
+            return;
+        }
+        if (new Random().nextDouble() < failureProbability) {
+            fail();
+            return;
         }
         status = WORKING;
         timeRemainingOnUnit--;
-        return false;
     }
 
     //return true if unit successfully given to next cell

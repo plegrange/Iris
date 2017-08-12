@@ -36,11 +36,34 @@ public class DecisionNet {
         addLayer(neurons, neurons, numberOfLayers - 1, numberOfOutputs);
     }
 
-    private double[] getOutputs(double[] inputs){
+    public double[] getOutputs(double[] inputs, int weightMatrixIndex) {
+        if (weightMatrixIndex == weightMatrices.size()) {
+            return inputs;
+        }
+        return doLayer(inputs, weightMatrices.get(weightMatrixIndex));
+    }
 
+    private double[] doLayer(double[] inputs, double[][] weights) {
+        double[] outputs = new double[weights.length];
+        for (int n = 0; n < weights.length; n++) {
+            double output = 0.0;
+            for (int i = 0; i < inputs.length; i++) {
+                output += inputs[i] * weights[n][i];
+            }
+            outputs[n] = output - 1.0;
+        }
+        return outputs;
     }
 
     private double getRandomWeight(int inputs) {
         return (-1.0 / Math.sqrt(inputs)) + new Random().nextDouble() * 2.0 / Math.sqrt(inputs);
+    }
+
+    public List<double[][]> getWeightMatrices() {
+        return weightMatrices;
+    }
+
+    public void setWeightMatrices(List<double[][]> weightMatrices) {
+        this.weightMatrices = weightMatrices;
     }
 }
