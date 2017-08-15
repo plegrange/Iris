@@ -7,12 +7,15 @@ public class DecisionNet {
     private int numberOfHiddenLayers;
     private int numberOfOutputs, numberOfInputs;
     private int numberOfNeuronsPerLayer;
+    private int patternCounter;
+    private double[] sumsOfInputs;
 
     public DecisionNet(int numberOfHiddenLayers, int numberOfOutputs, int numberOfNeuronsPerLayer, int numberOfInputs) {
         this.numberOfHiddenLayers = numberOfHiddenLayers;
         this.numberOfOutputs = numberOfOutputs;
         this.numberOfNeuronsPerLayer = numberOfNeuronsPerLayer;
         this.numberOfInputs = numberOfInputs;
+
         initialize();
     }
 
@@ -37,22 +40,50 @@ public class DecisionNet {
     }
 
     public double[] getOutputs(double[] inputs, int weightMatrixIndex) {
-        if (weightMatrixIndex == weightMatrices.size()) {
-            return inputs;
+        for (int i = 0; i < inputs.length; i++) {
+            sumsOfInputs[i] += inputs[i];
         }
-        return doLayer(inputs, weightMatrices.get(weightMatrixIndex));
+        patternCounter++;
+        return doLayer(inputs, weightMatrixIndex);
     }
 
-    private double[] doLayer(double[] inputs, double[][] weights) {
+    private double[] doLayer(double[] inputs, int weightMatrixIndex) {
+        if (weightMatrixIndex == weightMatrices.size())
+            return inputs;
+        double[][] weights = weightMatrices.get(weightMatrixIndex);
         double[] outputs = new double[weights.length];
         for (int n = 0; n < weights.length; n++) {
             double output = 0.0;
             for (int i = 0; i < inputs.length; i++) {
-                output += inputs[i] * weights[n][i];
+                double temp = inputs[i] * weights[n][i];
+                output += Math.max(0, temp);
             }
-            outputs[n] = output - 1.0;
+            outputs[n] = output;
         }
-        return outputs;
+        return doLayer(outputs, weightMatrixIndex + 1);
+    }
+
+    private double error = 0;
+
+    public void reward(double[] meanResults) {
+        error = 1.0 - Math.max(meanResults[0], meanResults[1]);
+    }
+
+    public void penalize(double[] meanResults) {
+        error = Math.max(meanResults[0], meanResults[1]);
+    }
+
+    private void adjustWeights() {
+
+    }
+
+    public void startBatch() {
+        sumsOfInputs = new double[numberOfInputs];
+        patternCounter = 0;
+    }
+
+    public void endBatch() {
+
     }
 
     private double getRandomWeight(int inputs) {
